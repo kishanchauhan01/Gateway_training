@@ -1,4 +1,4 @@
-public class Methods
+public class MethodLearnings
 {
     static int Add(int a, int b)
     {

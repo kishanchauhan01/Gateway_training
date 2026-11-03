@@ -10,4 +10,7 @@
 // Console.WriteLine($"====== Employee Information ======== \n\n Name: {employeeName}\n Employee ID: {employeeID}\n Age: {age}\n Monthly salary: {monthlySalary}\n Currently employeed: {isActive}\n Grade: {grade}\n Bonus: {(bonus.HasValue ? bonus : "Not assigned")}\n ");
 
 // TypeConversion.Run();
-Methods.Run();
+// MethodLearnings.Run();
+// StringLearnings.Run();
+// CollectionLearnings.Run();
+ExceptionLearning.Run();
