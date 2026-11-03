@@ -1,0 +1,14 @@
+/home/kishanccj/kishan/gateway_training/firstPractice/bin/Debug/net10.0/firstPractice
+/home/kishanccj/kishan/gateway_training/firstPractice/bin/Debug/net10.0/firstPractice.deps.json
+/home/kishanccj/kishan/gateway_training/firstPractice/bin/Debug/net10.0/firstPractice.runtimeconfig.json
+/home/kishanccj/kishan/gateway_training/firstPractice/bin/Debug/net10.0/firstPractice.dll
+/home/kishanccj/kishan/gateway_training/firstPractice/bin/Debug/net10.0/firstPractice.pdb
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.GeneratedMSBuildEditorConfig.editorconfig
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.AssemblyInfoInputs.cache
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.AssemblyInfo.cs
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.csproj.CoreCompileInputs.cache
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.dll
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/refint/firstPractice.dll
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.pdb
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/firstPractice.genruntimeconfig.cache
+/home/kishanccj/kishan/gateway_training/firstPractice/obj/Debug/net10.0/ref/firstPractice.dll

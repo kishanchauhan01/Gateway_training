@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "feoZeOeYUx8=",
+  "success": true,
+  "projectFilePath": "/home/kishanccj/kishan/gateway_training/week1/week1.csproj",
+  "expectedPackageFiles": [
+    "/home/kishanccj/.nuget/packages/microsoft.aspnetcore.app.ref/10.0.13/microsoft.aspnetcore.app.ref.10.0.13.nupkg.sha512"
+  ],
+  "logs": []
+}
