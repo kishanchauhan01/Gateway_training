@@ -260,7 +260,7 @@ docker build -t myapp:1.0 .
 docker run -d --name myapp-container -p 8080:8080 myapp:1.0
 ```
 
-*(The trailing period* *.* *in* *docker build* *indicates the* **build context** *, which is the directory Docker packages and sends to the builder*).
+_(The trailing period_ _._ _in_ _docker build_ _indicates the_ **build context** _, which is the directory Docker packages and sends to the builder_).
 
 ---
 
@@ -287,7 +287,7 @@ docker run -d --name web --net my-net -p 8080:8080 -e DB_HOST=redis my-web-app
 
 Compose looks for a file named `compose.yaml` (or `compose.yml`) in your working directory. A Compose file is organized under three primary top-level keys:
 
-1. **services** *(Mandatory)*: Defines each containerized microservice that makes up the application.
+1. **services** _(Mandatory)_: Defines each containerized microservice that makes up the application.
 2. **networks**: Defines the virtual networks used for inter-service communication and automatic DNS service discovery.
 3. **volumes**: Declares persistent storage volumes whose lifecycles remain decoupled from individual containers.
 
@@ -299,27 +299,27 @@ Here is an annotated `compose.yaml` file defining a web application connected to
 services:
   # 1. The Web Application Service
   web-fe:
-    build: .                          # Build the image from the local Dockerfile
-    command: python app.py            # Startup command for the container
+    build: . # Build the image from the local Dockerfile
+    command: python app.py # Startup command for the container
     ports:
-      - target: 8080                  # Port inside the container
-        published: 5001               # Port exposed on the host machine
+      - target: 8080 # Port inside the container
+        published: 5001 # Port exposed on the host machine
     networks:
-      - counter-net                   # Connect container to custom network
+      - counter-net # Connect container to custom network
     environment:
-      - REDIS_HOST=redis              # Environment variable passed to container
+      - REDIS_HOST=redis # Environment variable passed to container
     depends_on:
-      - redis                         # Start redis before starting web-fe
+      - redis # Start redis before starting web-fe
 
   # 2. The Database / Cache Service
   redis:
-    image: "redis:alpine"             # Pull a pre-built image from Docker Hub
+    image: "redis:alpine" # Pull a pre-built image from Docker Hub
     networks:
-      - counter-net                   # Share the network for communication
+      - counter-net # Share the network for communication
     volumes:
       - type: volume
-        source: counter-vol           # Mount the named volume
-        target: /data                 # Path inside the container
+        source: counter-vol # Mount the named volume
+        target: /data # Path inside the container
 
 # Define the network shared by services
 networks:
@@ -328,7 +328,6 @@ networks:
 # Define persistent storage
 volumes:
   counter-vol:
-
 ```
 
 #### 4\. How Docker Compose Works Under the Hood
@@ -343,15 +342,261 @@ When you deploy an application using Compose, several automated behaviors occur:
 
 In modern Docker installations, Compose is integrated directly into the `docker` CLI plugin via the `docker compose` command:
 
-| Command                    | What It Does                                                                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Command                    | What It Does                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **docker compose up -d**   | Reads the Compose file, builds/pulls images, sets up networks and volumes, and starts all containers in the background (detached). |
-| **docker compose ps**      | Lists all running containers within the current Compose project and their mapped ports.                                     |
-| **docker compose logs -f** | Streams aggregated, color-coded logs from all services in the stack simultaneously.                                                     |
-| **docker compose top**     | Displays the processes running inside each container of the application.                                                          |
-| **docker compose stop**    | Pauses/stops all containers in the stack without removing them.                                                             |
-| **docker compose restart** | Restarts all stopped containers in the stack.                                                                               |
-| **docker compose down**    | Gracefully stops and **deletes the containers and networks**.                                                               |
-| **docker compose down -v** | Stops and deletes containers, networks, **and associated named volumes**.                                                         |
+| **docker compose ps**      | Lists all running containers within the current Compose project and their mapped ports.                                            |
+| **docker compose logs -f** | Streams aggregated, color-coded logs from all services in the stack simultaneously.                                                |
+| **docker compose top**     | Displays the processes running inside each container of the application.                                                           |
+| **docker compose stop**    | Pauses/stops all containers in the stack without removing them.                                                                    |
+| **docker compose restart** | Restarts all stopped containers in the stack.                                                                                      |
+| **docker compose down**    | Gracefully stops and **deletes the containers and networks**.                                                                      |
+| **docker compose down -v** | Stops and deletes containers, networks, **and associated named volumes**.                                                          |
 
 ---
+
+### Docker Ports &amp; Networking
+
+In Docker, networking is what allows microservices to communicate with one another and enables users or external systems to access containerized services.
+
+#### 1\. The Core Architecture: CNM &amp; Libnetwork
+
+Docker’s networking model is governed by the **Container Network Model (CNM)** specification, which defines three fundamental building blocks.
+
+```
+┌──────────────────────────────────────────────┐
+│                  Container                   │
+│  ┌────────────────────────────────────────┐  │
+│  │               Sandbox                  │  │
+│  │   (Routing table, DNS, IP config)      │  │
+│  │                  │                     │  │
+│  │            [ Endpoint ]                │  │
+│  └──────────────────┬─────────────────────┘  │
+└─────────────────────┼────────────────────────┘
+                      │ (veth pair)
+                      ▼
+            ┌──────────────────┐
+            │     Network      │
+            │ (Virtual Switch) │
+            └──────────────────┘
+
+```
+
+1. **Sandbox**: An isolated network stack inside the container created using a Linux **network (** **net** **) namespace**. It contains the container's own virtual interfaces, IP address, routing table, and DNS settings.
+2. **Endpoint**: A virtual network interface that connects the sandbox to a network. An endpoint behaves like a physical network card and can only belong to one network at a time.
+3. **Network**: A software implementation of an **802.1d bridge (virtual switch)** that groups and isolates connected endpoints.
+
+Under the hood, **`libnetwork`** is the open-source reference implementation of CNM. It manages the **control plane** (management APIs, IP address management/IPAM, and service discovery), while pluggable **network drivers** implement the actual **data plane** (creating the networks and handling packet forwarding).
+
+#### 2\. Single-Host Bridge Networks
+
+The most common network type for standalone containers and local development is the **single-host bridge network**
+
+##### Default `bridge` vs. User-Defined Bridge Networks
+
+When you run `docker network ls`, Docker lists pre-existing default networks
+
+```
+$ docker network ls
+NETWORK ID     NAME      DRIVER    SCOPE
+c7464dce29ce   bridge    bridge    local
+c65ab18d0580   host      host      local
+42a783df0fbe   none      null      local
+
+```
+
+There is a vital distinction between the **default bridge** and **user-defined bridges**:
+
+| Feature                      | Default `bridge` Network                                                                    | User-Defined Bridge Network (`docker network create`)                                                        |
+| :--------------------------- | :------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------------- |
+| **Kernel Bridge**            | Maps to `docker0` in the Linux kernel.                                                      | Maps to a dedicated kernel bridge named `br-<network-id>`.                                                   |
+| **Automatic DNS Resolution** | **No**. Containers cannot find each other by name; you must connect using IP addresses.     | **Yes**. Docker's embedded DNS allows containers to ping and connect to each other simply by container name. |
+| **Isolation**                | All containers attach here by default unless specified, creating a shared collision domain. | Isolated from all other networks; only containers explicitly joined can communicate.                         |
+
+#### 3\. How a Bridge Network Works Under the Hood
+
+When you attach a container to a bridge network:
+
+1. Docker creates a **veth** **(virtual Ethernet) pair**.
+2. Think of a `veth` pair like a virtual Ethernet cable:
+
+- One end is placed inside the container's network namespace as its `eth0` interface.
+- The other end is plugged into the host kernel's bridge switch (e.g., `docker0` or `br-f918f1bb0602`).
+
+3. Docker assigns the container an internal private IP from the network subnet (e.g., `172.17.0.2` or `172.21.0.2`).
+
+#### Automatic DNS Service Discovery
+
+On user-defined networks, each container's DNS queries are routed to Docker’s embedded DNS server at `127.0.0.11`. When container `web` attempts to connect to `redis`, the internal DNS server resolves `redis` directly to its internal container IP address.
+
+#### 4\. Ports: The Truth Behind Port Mapping (`-p`)
+
+Because containers run on an isolated private subnet (e.g., `172.21.0.0/16`), their IP addresses **are not directly routable** from your host's physical network or the public internet.
+
+To expose an application to the outside world, you must use **port mapping**.
+
+```
+docker run -d -p 8080:5000 --name webapp my-image
+```
+
+#### Syntax:
+
+```
+-p <HOST_PORT>:<CONTAINER_PORT>
+```
+
+- **Host Port (** **8080** **)**: The port opened on your physical machine or VM.
+- **Container Port (** **5000** **)**: The port the application process inside the container is actually listening on.
+
+#### What Happens Under the Hood? (NAT &amp; `iptables`)
+
+When you pass `-p 8080:5000`, Docker does **not** reconfigure the application inside the container. Instead, the Docker daemon creates **iptables** **Network Address Translation (NAT) rules** in the Linux host's kernel:
+
+1. Outside traffic arrives at the host's IP on port `8080`.
+2. The host's kernel intercepts this traffic and translates the destination address (**DNAT**) to the container’s private IP and port `5000`.
+3. The packet traverses the kernel bridge and the `veth` pair, arriving at the container.
+
+#### `EXPOSE` vs. `-p` / `--publish`:
+
+- **EXPOSE 5000** **(in a Dockerfile)**: This is strictly **documentation/metadata**. It tells developers and tools which port the image is designed to listen on, but it does **not** open or publish any ports on the host.
+- **\-p** **/** **\--publish** **(CLI or Compose)**: This actually configures the host firewall and binds the port to enable real external traffic flow.
+
+#### 5\. Other Native Network Drivers
+
+Beyond the default bridge driver, Docker includes several built-in drivers for different architectural needs:
+
+- **host**: Completely removes network isolation. The container shares the host’s network namespace directly. There is no NAT or port mapping—if an app in the container binds to port `80`, it directly occupies port `80` on the host machine.
+- **none**: Disables all networking. The container gets a loopback interface (`127.0.0.1`), but no external virtual interfaces.
+- **macvlan**: Assigns a real MAC and IP address from your physical LAN to the container, making it appear as a physical server directly on your corporate switch or VLAN. _(Requires the host NIC to support promiscuous mode)_.
+- **overlay**: Creates a multi-host, flat Layer 2 network over Layer 3 infrastructure using **VXLAN tunnels**. This is used by Docker Swarm and container orchestrators so containers on different physical machines can communicate as if they were on the same local switch.
+
+#### 6\. Essential Network Commands
+
+| Command                                  | Action                                                                                 |
+| :--------------------------------------- | :------------------------------------------------------------------------------------- |
+| `docker network ls`                      | Lists all networks on the host.                                                        |
+| `docker network create -d bridge <name>` | Creates a new user-defined bridge network.                                             |
+| `docker network inspect <name>`          | Displays detailed network metadata, subnet range, gateway, and connected containers.   |
+| `docker network connect <net> <ctr>`     | Dynamically attaches a running container to another network (creating a new endpoint). |
+| `docker network disconnect <net> <ctr>`  | Detaches a container from a network.                                                   |
+| `docker port <ctr>`                      | Displays active port mappings between the host and the container.                      |
+| `docker network prune`                   | Removes all unused container networks.                                                 |
+
+### 1\. The Core Problem: Why Do We Need Volumes?
+
+By default, data in containers is **non-persistent** and **ephemeral**.
+
+When you start a container from an image, Docker stacks the image's immutable read-only layers and places a **thin writable layer** (often called _ephemeral storage_, _read-write storage_, or _graphdriver storage_) directly on top.
+
+- **The Problem**: This local storage layer is strictly coupled to the container's lifecycle. When the container stops and restarts, the writable layer is preserved; however, as soon as you delete the container (`docker rm`), **this writable layer is destroyed along with it**.
+- **The Solution**: Docker **volumes** decouple data from the container lifecycle. Volumes are **first-class objects** in Docker managed independently via the API and CLI. Deleting a container does not delete the volume mounted to it.
+
+### 2\. Containers Without Volumes vs. Containers With Volumes
+
+```
+WITHOUT VOLUMES (Ephemeral)               WITH VOLUMES (Persistent)
+┌─────────────────────────────────┐       ┌─────────────────────────────────┐
+│ Container Process               │       │ Container Process               │
+├─────────────────────────────────┤       ├─────────────────────────────────┤
+│ Thin Writable Layer (Deleted    │       │ Thin Writable Layer             │
+│ when container is removed)      │       │                                 │
+├─────────────────────────────────┤       ├────────────────┬────────────────┤
+│ Read-Only Image Layers          │       │ Read-Only      │ Mount: /data   │
+│                                 │       │ Image Layers   │      │         │
+└─────────────────────────────────┘       └────────────────┼──────┼─────────┘
+                                                           │      ▼
+                                               ┌───────────┴─────────────┐
+                                               │ Docker Volume (myvol)   │
+                                               │ (Stored on Host / SAN)  │
+                                               │ Persists after delete!  │
+                                               └─────────────────────────┘
+
+```
+
+- **Containers without volumes**: Best for **stateless apps** (like web servers or microservices) that only write temporary scratch files.
+- **Containers with volumes**: Essential for **stateful apps** (like databases: PostgreSQL, MySQL, Redis, MongoDB) where customer records, transaction logs, and configurations must survive restarts, crashes, and upgrades.
+
+### 3\. Types of Docker Mounts
+
+Docker provides three distinct ways to handle data:
+
+| Mount Type                      | Where It Lives on the Host                                                 | Managed by Docker?                                       | Best Used For                                                                     |
+| :------------------------------ | :------------------------------------------------------------------------- | :------------------------------------------------------- | :-------------------------------------------------------------------------------- |
+| **Named Volumes**               | Managed storage under `/var/lib/docker/volumes/<vol-name>/_data`           | **Yes** (via `docker volume` commands)                   | Production databases, persistent app data, decoupled storage.                     |
+| **Bind Mounts**                 | Any arbitrary directory on the host (e.g. `/home/user/project` or `./app`) | **No** (relies on host filesystem permissions and paths) | Local development: sharing source code from your editor live into the container.  |
+| **`tmpfs` Mounts** (Linux only) | Host system memory (RAM); never written to disk                            | **Yes**                                                  | Sensitive data or temporary high-speed scratch caches that should never hit disk. |
+
+### 4\. How Named Volumes Work Under the Hood
+
+When you create a named volume, Docker interacts with a **volume driver**:
+
+- **Default** **local** **Driver**: By default, Docker creates volumes using the built-in `local` driver. Docker creates a dedicated directory on the host's filesystem inside `/var/lib/docker/volumes/<volume-name>/_data`
+- **Mounting Mechanism**: When the container's mount namespace (`mnt`) is assembled, the host directory for that volume is mounted directly into the target container directory (e.g., `/data`). Any read or write to `/data` completely bypasses the container's Copy-on-Write storage driver and writes straight to the host directory at native disk speed.
+- **Third-Party / Cluster Plugins**: You can also use third-party volume drivers to mount volumes backed by remote enterprise SAN/NAS storage, NFS, or cloud block stores (AWS EBS, GCP Persistent Disk), allowing volumes to be shared or reattached across different host.
+
+### 5\. Managing Volumes: Essential CLI Commands
+
+Docker treats volumes as top-level resources[8]:
+
+```
+# 1. Create a named volume
+docker volume create my-db-data
+
+# 2. List all volumes on the host
+docker volume ls
+
+# 3. Inspect a volume (shows Mountpoint on the host filesystem)
+docker volume inspect my-db-data
+
+# 4. Remove an unused volume (will fail if attached to any container)
+docker volume rm my-db-data
+
+# 5. Prune all unused volumes (WARNING: deletes all unattached volumes!)
+docker volume prune
+
+```
+
+### 6\. Attaching Volumes to Containers
+
+There are two CLI flags to mount volumes: the newer, explicit `--mount` syntax (recommended) and the classic `-v` syntax.
+
+#### Using `--mount` (Recommended)
+
+```
+docker run -d \
+  --name db-container \
+  --mount source=my-db-data,target=/data \
+  redis:alpine
+
+```
+
+*(If* *my-db-data* *does not already exist, Docker automatically creates it*).
+
+#### Using `-v` / `--volume`
+
+```
+# Named volume:
+docker run -d --name db-container -v my-db-data:/data redis:alpine
+
+# Bind mount (specifying absolute host path):
+docker run -d --name web-container -v /Users/dev/my-app:/usr/src/app nginx
+
+```
+
+#### Volume Definition in Compose (`compose.yaml`)
+
+In Docker Compose, volumes are defined at the top level and referenced under the service:
+
+```
+services:
+  db:
+    image: redis:alpine
+    volumes:
+      - type: volume
+        source: redis-store
+        target: /data
+
+volumes:
+  redis-store:
+
+```
