@@ -8,8 +8,10 @@ RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /out
 
+# Multistage build
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS final
 
+# same working DIR for both builds
 WORKDIR /app
 
 COPY --from=build /out .
