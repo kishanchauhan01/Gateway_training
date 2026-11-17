@@ -1,0 +1,27 @@
+services:
+  web:
+    build: . # Builds from local Dockerfile
+    ports:
+      - "8080:3000" # Host 8080 -> container 3000
+    environment:
+      - REDIS_HOST=redis # Matches service name below (Docker DNS)
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - app-net
+
+  redis:
+    image: redis:alpine # Official pre-built Redis image
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data # Persistent root directory for Redis (inside redis container)
+    networks:
+      - app-net
+
+networks:
+  app-net: {}
+
+volumes:
+  redis-data: {}
