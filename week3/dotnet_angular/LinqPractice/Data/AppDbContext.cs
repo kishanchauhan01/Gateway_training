@@ -5,7 +5,8 @@ namespace LinqPractice.Data;
 
 public class AppDbContext : DbContext
 {
-    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<Employee> Employees => Set<Employee>();
 
     protected override void OnConfiguring(
         DbContextOptionsBuilder options)

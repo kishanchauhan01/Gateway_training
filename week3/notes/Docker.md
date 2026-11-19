@@ -1,5 +1,8 @@
 # Docker
 
+
+- [Docker Command Cheatsheet](#docker-command-cheatsheet)
+
 ## What is Docker?
 
 - In the container ecosystem, **Docker** refers to two distinct things:
@@ -600,3 +603,267 @@ volumes:
   redis-store:
 
 ```
+
+---
+
+# Docker Command Cheatsheet
+
+Most-used Docker commands, with a comment on the right explaining what each does.
+
+---
+
+## 1. Setup & Info
+
+```bash
+docker --version                  # Show installed Docker version
+docker info                       # Show system-wide Docker info (containers, images, storage driver)
+docker help                       # List all Docker commands
+docker <command> --help           # Show help for a specific command
+docker login                      # Log in to Docker Hub (or another registry)
+docker logout                     # Log out from the registry
+```
+
+---
+
+## 2. Images
+
+```bash
+docker images                     # List all local images
+docker image ls                   # Same as above (newer syntax)
+docker pull nginx                 # Download the latest nginx image from Docker Hub
+docker pull nginx:1.25            # Download a specific version (tag) of an image
+docker search redis               # Search Docker Hub for images
+docker build -t myapp .           # Build an image from Dockerfile in current dir, tag it "myapp"
+docker build -t myapp:v1 .        # Build an image with a specific tag/version
+docker build --no-cache -t myapp .  # Build without using cached layers
+docker tag myapp user/myapp:v1    # Give an image another name/tag (needed before pushing)
+docker push user/myapp:v1         # Upload an image to a registry
+docker rmi myapp                  # Remove an image
+docker rmi -f myapp               # Force-remove an image
+docker image prune                # Remove dangling (untagged) images
+docker image prune -a             # Remove all images not used by any container
+docker history myapp              # Show the layers/history of an image
+docker inspect myapp              # Show detailed JSON info about an image
+docker save -o myapp.tar myapp    # Save an image to a tar file
+docker load -i myapp.tar          # Load an image from a tar file
+```
+
+---
+
+## 3. Running Containers
+
+```bash
+docker run nginx                          # Create and start a container from nginx image (foreground)
+docker run -d nginx                       # Run container in detached mode (background)
+docker run --name web nginx               # Give the container a custom name
+docker run -p 8080:80 nginx               # Map host port 8080 to container port 80
+docker run -d -p 8080:80 --name web nginx # Background + port mapping + name (very common)
+docker run -it ubuntu bash                # Run interactively with a terminal (-i keep stdin, -t tty)
+docker run --rm alpine echo "hi"          # Run and auto-delete container after it exits
+docker run -e NODE_ENV=production myapp  # Set an environment variable inside the container
+docker run --env-file .env myapp          # Load environment variables from a file
+docker run -v mydata:/data myapp          # Mount a named volume into the container
+docker run -v $(pwd):/app myapp           # Bind-mount current host folder into /app (live code sync)
+docker run --network mynet myapp          # Attach container to a specific network
+docker run --restart unless-stopped myapp # Auto-restart container unless manually stopped
+docker run -m 512m --cpus 1.5 myapp       # Limit memory to 512MB and CPU to 1.5 cores
+docker run -u 1000:1000 myapp             # Run as a specific user and group ID
+docker run -w /app myapp                  # Set the working directory inside the container
+```
+
+---
+
+## 4. Managing Containers
+
+```bash
+docker ps                         # List running containers
+docker ps -a                      # List all containers (running + stopped)
+docker ps -q                      # List only container IDs
+docker start web                  # Start a stopped container
+docker stop web                   # Gracefully stop a running container (SIGTERM)
+docker restart web                # Stop and start a container again
+docker kill web                   # Force stop a container immediately (SIGKILL)
+docker pause web                  # Pause all processes in a container
+docker unpause web                # Resume a paused container
+docker rename web web-old         # Rename a container
+docker rm web                     # Remove a stopped container
+docker rm -f web                  # Force-remove a running container
+docker container prune            # Remove all stopped containers
+docker stop $(docker ps -q)       # Stop all running containers
+docker rm $(docker ps -aq)        # Remove all containers
+```
+
+---
+
+## 5. Inspecting & Debugging
+
+```bash
+docker logs web                   # Show container logs
+docker logs -f web                # Follow logs in real time (like tail -f)
+docker logs --tail 100 web        # Show only the last 100 log lines
+docker logs -t web                # Show logs with timestamps
+docker inspect web                # Show full low-level JSON details of a container
+docker stats                      # Live CPU/memory/network usage of running containers
+docker top web                    # Show running processes inside a container
+docker port web                   # Show port mappings of a container
+docker diff web                   # Show files changed in container filesystem
+docker events                     # Stream real-time Docker events from the daemon
+```
+
+---
+
+## 6. Executing Commands Inside Containers
+
+```bash
+docker exec web ls /app                  # Run a one-off command in a running container
+docker exec -it web bash                 # Open an interactive bash shell in a running container
+docker exec -it web sh                   # Open a shell (for Alpine images without bash)
+docker exec -u root -it web bash         # Open a shell as root user
+docker exec -it db psql -U postgres      # Open PostgreSQL CLI inside a running container
+docker exec -it redis redis-cli          # Open Redis CLI inside a running container
+docker attach web                        # Attach your terminal to a running container's main process
+```
+
+---
+
+## 7. Copying Files
+
+```bash
+docker cp web:/app/file.txt ./file.txt   # Copy a file from container to host
+docker cp ./file.txt web:/app/file.txt   # Copy a file from host to container
+docker cp web:/var/log/ ./logs/          # Copy a whole folder from container to host
+```
+
+---
+
+## 8. Volumes (Persistent Data)
+
+```bash
+docker volume create mydata              # Create a named volume
+docker volume ls                         # List all volumes
+docker volume inspect mydata             # Show details of a volume (mount path, driver)
+docker volume rm mydata                  # Remove a volume
+docker volume prune                      # Remove all unused volumes
+```
+
+---
+
+## 9. Networks
+
+```bash
+docker network ls                        # List all networks
+docker network create mynet              # Create a custom bridge network
+docker network inspect mynet             # Show details of a network (connected containers, IPs)
+docker network connect mynet web         # Connect a running container to a network
+docker network disconnect mynet web      # Disconnect a container from a network
+docker network rm mynet                  # Remove a network
+docker network prune                     # Remove all unused networks
+```
+
+---
+
+## 10. Docker Compose
+
+```bash
+docker compose up                        # Create and start all services in docker-compose.yml
+docker compose up -d                     # Start all services in background
+docker compose up --build                # Rebuild images before starting
+docker compose up -d --force-recreate    # Recreate containers even if config hasn't changed
+docker compose down                      # Stop and remove containers and networks
+docker compose down -v                   # Also remove named volumes (deletes data!)
+docker compose ps                        # List containers of the compose project
+docker compose logs                      # Show logs of all services
+docker compose logs -f api               # Follow logs of a single service ("api")
+docker compose build                     # Build/rebuild images for services
+docker compose pull                      # Pull latest images for services
+docker compose start                     # Start existing stopped services
+docker compose stop                      # Stop services without removing them
+docker compose restart api               # Restart a specific service
+docker compose exec api bash             # Open a shell inside a running service container
+docker compose run --rm api npm test    # Run a one-off command in a new container of a service
+docker compose config                    # Validate and print the final compose configuration
+docker compose -f prod.yml up -d         # Use a specific compose file
+```
+
+---
+
+## 11. Cleanup (Free Disk Space)
+
+```bash
+docker system df                         # Show Docker disk usage (images, containers, volumes)
+docker system prune                      # Remove stopped containers, unused networks, dangling images
+docker system prune -a                   # Also remove all unused images
+docker system prune -a --volumes         # Remove everything unused, including volumes (careful!)
+docker builder prune                     # Remove build cache
+```
+
+---
+
+## 12. Dockerfile Quick Reference
+
+```dockerfile
+FROM node:20-alpine            # Base image to start from
+WORKDIR /app                   # Set working directory inside the image
+COPY package*.json ./          # Copy files from host into the image
+RUN npm install                # Run a command during build (creates a layer)
+COPY . .                       # Copy the rest of the source code
+ENV NODE_ENV=production        # Set an environment variable
+EXPOSE 3000                    # Document the port the app listens on
+USER node                      # Run subsequent commands as a non-root user
+CMD ["node", "server.js"]      # Default command when the container starts
+ENTRYPOINT ["node"]            # Fixed executable; CMD args get appended to it
+```
+
+---
+
+## 13. docker-compose.yml Example
+
+```yaml
+services:
+  api:
+    build: .                       # Build image from Dockerfile in current folder
+    ports:
+      - "3000:3000"                # Map host:container ports
+    environment:
+      - DATABASE_URL=postgres://postgres:secret@db:5432/app   # Env vars for the service
+    depends_on:
+      - db                         # Start db before api
+      - redis
+    volumes:
+      - .:/app                     # Bind mount source code for live reload
+  db:
+    image: postgres:16             # Use the official PostgreSQL image
+    environment:
+      POSTGRES_PASSWORD: secret    # Required password for postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # Persist database data
+  redis:
+    image: redis:7-alpine          # Lightweight Redis image
+
+volumes:
+  pgdata:                          # Declare the named volume
+```
+
+---
+
+## 14. Handy One-Liners
+
+```bash
+docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=secret --name pg postgres:16   # Quick PostgreSQL server
+docker run -d -p 6379:6379 --name redis redis:7-alpine                         # Quick Redis server
+docker run -d -p 27017:27017 --name mongo mongo:7                              # Quick MongoDB server
+docker run --rm -it -v $(pwd):/app -w /app node:20 bash                        # Throwaway Node shell with current folder mounted
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"                 # Clean, custom-formatted container list
+docker inspect -f '{{.NetworkSettings.IPAddress}}' web                         # Get a container's IP address
+docker images --filter "dangling=true"                                         # List dangling (untagged) images
+```
+
+---
+
+## Tips
+
+- Use `docker compose` (v2, space) instead of the old `docker-compose` (hyphen).
+- Prefer **named volumes** for databases and **bind mounts** for live source code during development.
+- Use `--rm` for throwaway containers so they clean up after themselves.
+- Use small base images (`-alpine`) and a `.dockerignore` file to keep builds fast and lean.
+- Containers on the same custom network can reach each other by **service/container name** (e.g. `db`, `redis`).
